@@ -2,8 +2,9 @@ import { useState, useRef } from "react";
 import TopBar from "../components/TopBar";
 import LeftPanel from "../components/LeftPanel";
 import BottomBar from "../components/BottomBar";
-import ThreeCanvas, { ThreeCanvasHandle } from "../components/ThreeCanvas";
-// FIX: Use 'import type'
+// FIX: Split the imports. Component is a value, Handle is a type.
+import ThreeCanvas from "../components/ThreeCanvas";
+import type { ThreeCanvasHandle } from "../components/ThreeCanvas";
 import type { FloorState } from "../types/floor";
 import type { WallState } from "../types/wall";
 
