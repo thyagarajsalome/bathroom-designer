@@ -1,5 +1,5 @@
-import { FloorState } from "../types/floor";
-import { WallState } from "../types/wall"; // This will now work
+import type { FloorState } from "../types/floor";
+import type { WallState } from "../types/wall";
 
 interface Props {
   floorState: FloorState;

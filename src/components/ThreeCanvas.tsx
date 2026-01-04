@@ -1,7 +1,8 @@
 import { useEffect, useImperativeHandle, forwardRef } from "react";
 import { useThreeScene } from "../three/useThreeScene";
-import { FloorState } from "../types/floor";
-import { WallState } from "../types/wall";
+// FIX: Use 'import type'
+import type { FloorState } from "../types/floor";
+import type { WallState } from "../types/wall";
 
 interface Props {
   floorState: FloorState;

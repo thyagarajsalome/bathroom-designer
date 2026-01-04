@@ -3,8 +3,9 @@ import TopBar from "../components/TopBar";
 import LeftPanel from "../components/LeftPanel";
 import BottomBar from "../components/BottomBar";
 import ThreeCanvas, { ThreeCanvasHandle } from "../components/ThreeCanvas";
-import { FloorState } from "../types/floor";
-import { WallState } from "../types/wall";
+// FIX: Use 'import type'
+import type { FloorState } from "../types/floor";
+import type { WallState } from "../types/wall";
 
 export default function BathroomDesigner(): JSX.Element {
   const canvasRef = useRef<ThreeCanvasHandle>(null);
@@ -21,7 +22,7 @@ export default function BathroomDesigner(): JSX.Element {
     tileScale: 3,
     tileTexture: "ceramic",
     paintColor: "#f5f5f4",
-    tileHeight: 1.2, // Fixed: Added required property to prevent crash
+    tileHeight: 1.2,
   });
 
   const handleExport = () => {

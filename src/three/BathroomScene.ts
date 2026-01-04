@@ -3,8 +3,9 @@ import { OrbitControls } from "three/examples/jsm/controls/OrbitControls";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader";
 import { TextureLoader, RepeatWrapping } from "three";
 
-import { FloorState } from "../types/floor";
-import { WallState } from "../types/wall";
+// FIX: Use 'import type'
+import type { FloorState } from "../types/floor";
+import type { WallState } from "../types/wall";
 import { FLOOR_TEXTURES, WALL_TEXTURES } from "./textures";
 
 type WallGroup = {
@@ -13,6 +14,7 @@ type WallGroup = {
 };
 
 export class BathroomScene {
+  // ... rest of the file remains exactly the same ...
   scene: THREE.Scene;
   camera: THREE.PerspectiveCamera;
   renderer: THREE.WebGLRenderer;
