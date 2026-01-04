@@ -21,7 +21,7 @@ export default function BathroomDesigner(): JSX.Element {
     tileScale: 3,
     tileTexture: "ceramic",
     paintColor: "#f5f5f4",
-    tileHeight: 1.2, // Fixed: Added required property
+    tileHeight: 1.2, // Fixed: Added required property to prevent crash
   });
 
   const handleExport = () => {
