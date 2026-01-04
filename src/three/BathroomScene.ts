@@ -27,6 +27,7 @@ export class BathroomScene {
 
   readonly WALL_WIDTH = 6;
   readonly WALL_HEIGHT = 3;
+  private animationId: number = 0;
 
   constructor(container: HTMLDivElement) {
     // Scene
@@ -43,7 +44,10 @@ export class BathroomScene {
     this.camera.position.set(6, 6, 6);
 
     // Renderer
-    this.renderer = new THREE.WebGLRenderer({ antialias: true });
+    this.renderer = new THREE.WebGLRenderer({
+      antialias: true,
+      preserveDrawingBuffer: true,
+    }); // preserveDrawingBuffer needed for export
     this.renderer.setSize(container.clientWidth, container.clientHeight);
     this.renderer.setPixelRatio(window.devicePixelRatio);
     this.renderer.shadowMap.enabled = true;
@@ -88,6 +92,8 @@ export class BathroomScene {
     const key = new THREE.DirectionalLight(0xffffff, 0.7);
     key.position.set(5, 8, 5);
     key.castShadow = true;
+    key.shadow.mapSize.width = 1024;
+    key.shadow.mapSize.height = 1024;
     this.scene.add(key);
 
     const fill = new THREE.PointLight(0xfff1dc, 0.4);
@@ -110,10 +116,14 @@ export class BathroomScene {
   }
 
   updateFloor(state: FloorState) {
-    const tex = this.textureLoader.load(FLOOR_TEXTURES[state.tileType]);
+    const textureUrl = FLOOR_TEXTURES[state.tileType];
+    if (!textureUrl) return;
+
+    const tex = this.textureLoader.load(textureUrl);
     tex.wrapS = tex.wrapT = RepeatWrapping;
     tex.repeat.set(state.scale, state.scale);
     tex.rotation = THREE.MathUtils.degToRad(state.rotation);
+    tex.colorSpace = THREE.SRGBColorSpace;
 
     if (state.pattern === "brick") {
       tex.offset.x = 0.5 / state.scale;
@@ -140,6 +150,7 @@ export class BathroomScene {
     const tile = new THREE.Mesh(tileGeo, tileMat);
     const paint = new THREE.Mesh(paintGeo, paintMat);
 
+    // Initial positioning
     tile.position.set(position.x, 0.6, position.z);
     paint.position.set(position.x, 2.1, position.z);
 
@@ -165,43 +176,74 @@ export class BathroomScene {
   }
 
   updateWalls(state: WallState) {
-    const tex = this.textureLoader.load(WALL_TEXTURES[state.tileTexture]);
+    const textureUrl = WALL_TEXTURES[state.tileTexture];
+    if (!textureUrl) return;
+
+    const tex = this.textureLoader.load(textureUrl);
     tex.wrapS = tex.wrapT = RepeatWrapping;
     tex.repeat.set(state.tileScale, state.tileScale);
+    tex.colorSpace = THREE.SRGBColorSpace;
+
+    // Use default height if undefined (prevents crash)
+    const tileHeight = state.tileHeight || 1.2;
 
     this.walls.forEach(({ tile, paint }) => {
+      // Update Tile Material
       const tileMat = tile.material as THREE.MeshStandardMaterial;
       tileMat.map = tex;
       tileMat.needsUpdate = true;
 
-      tile.scale.y = state.tileHeight / 1.2;
+      // Update Tile Geometry & Position
+      tile.scale.y = tileHeight / 1.2; // 1.2 was initial height
+      tile.position.y = tileHeight / 2;
       tile.visible = true;
 
+      // Update Paint Material
       const paintMat = paint.material as THREE.MeshStandardMaterial;
       paintMat.color.set(state.paintColor);
+
+      // Update Paint Visibility & Position
       paint.visible = state.mode === "half-tile";
-      paint.position.y =
-        state.tileHeight + (this.WALL_HEIGHT - state.tileHeight) / 2;
+
+      if (state.mode === "half-tile") {
+        const remainingHeight = this.WALL_HEIGHT - tileHeight;
+        paint.scale.y = remainingHeight / (this.WALL_HEIGHT - 1.2); // normalize to initial geom
+        paint.position.y = tileHeight + remainingHeight / 2;
+      } else {
+        // In full tile mode, you might want to hide paint or scale tile to full wall
+        // For now, let's just assume we hide paint and scale tile if mode is full-tile
+        if (state.mode === "full-tile") {
+          tile.scale.y = this.WALL_HEIGHT / 1.2;
+          tile.position.y = this.WALL_HEIGHT / 2;
+        }
+      }
     });
   }
 
   // ───────────────────────── FIXTURES (GLTF)
   loadFixture(url: string, position: THREE.Vector3, scale = 1) {
-    this.gltfLoader.load(url, (gltf) => {
-      const model = gltf.scene;
-      model.position.copy(position);
-      model.scale.setScalar(scale);
+    this.gltfLoader.load(
+      url,
+      (gltf) => {
+        const model = gltf.scene;
+        model.position.copy(position);
+        model.scale.setScalar(scale);
 
-      model.traverse((obj) => {
-        if ((obj as THREE.Mesh).isMesh) {
-          obj.castShadow = true;
-          obj.receiveShadow = true;
-        }
-      });
+        model.traverse((obj) => {
+          if ((obj as THREE.Mesh).isMesh) {
+            obj.castShadow = true;
+            obj.receiveShadow = true;
+          }
+        });
 
-      this.scene.add(model);
-      this.fixtures.push(model);
-    });
+        this.scene.add(model);
+        this.fixtures.push(model);
+      },
+      undefined,
+      (error) => {
+        console.warn(`Could not load model: ${url}`, error);
+      }
+    );
   }
 
   // ───────────────────────── EXPORT
@@ -212,18 +254,42 @@ export class BathroomScene {
 
   // ───────────────────────── LOOP
   animate = () => {
-    requestAnimationFrame(this.animate);
+    this.animationId = requestAnimationFrame(this.animate);
     this.controls.update();
     this.renderer.render(this.scene, this.camera);
   };
 
+  stop() {
+    cancelAnimationFrame(this.animationId);
+  }
+
   resize(w: number, h: number) {
+    if (h === 0) return;
     this.camera.aspect = w / h;
     this.camera.updateProjectionMatrix();
     this.renderer.setSize(w, h);
   }
 
   dispose() {
+    this.stop();
     this.renderer.dispose();
+    this.controls.dispose();
+
+    // Dispose textures and materials to free memory
+    this.scene.traverse((object) => {
+      if (object instanceof THREE.Mesh) {
+        object.geometry.dispose();
+        if (object.material instanceof THREE.Material) {
+          object.material.dispose();
+        }
+      }
+    });
+
+    // Remove canvas from DOM
+    if (this.renderer.domElement.parentElement) {
+      this.renderer.domElement.parentElement.removeChild(
+        this.renderer.domElement
+      );
+    }
   }
 }
